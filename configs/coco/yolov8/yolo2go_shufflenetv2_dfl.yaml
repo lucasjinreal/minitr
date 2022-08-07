@@ -1,0 +1,99 @@
+_BASE_: "../../Base-YOLOv7.yaml"
+MODEL:
+  PIXEL_MEAN: [0.485, 0.456, 0.406] # same value as PP-YOLOv2, RGB order
+  PIXEL_STD: [0.229, 0.224, 0.225]
+
+  WEIGHTS: ""
+  MASK_ON: False
+  META_ARCHITECTURE: "YOLO2GO"
+  BACKBONE:
+    NAME: "build_shufflenetv2_backbone"
+    SUBTYPE: "1.0x" # 1.5x
+    OUT_FEATURES: [2, 3, 4]
+    WEIGHTS: "weights/shufflenetv2_x1-5666bf0f80.pth"
+
+  YOLO:
+    CLASSES: 80
+    IN_FEATURES: [2, 3, 4]
+    CONF_THRESHOLD: 0.001
+    NMS_THRESHOLD: 0.65
+    IGNORE_THRESHOLD: 0.7
+    LOSS_TYPE: "v7"
+    LOSS:
+      LAMBDA_IOU: 1.5
+      LAMBDA_CLS: 1.5
+    NECK:
+      TYPE: "ghostpan"
+      OUT_CHANNELS: 96
+    HEAD:
+      # TYPE: "ppyoloe"
+      # TYPE: "yolox"
+      TYPE: "dfl"
+    NORMALIZE_INPUT: true
+    USE_AUX_HEAD: True
+    AUX_DETACH_ITER: 80000 # deatch auxiliary head
+
+DATASETS:
+  TRAIN: ("coco_2017_train",)
+  # TEST: ("coco_2014_val_mini",)
+  TEST: ("coco_2017_val",)
+
+INPUT:
+  # FORMAT: "RGB" # using BGR default
+  # MIN_SIZE_TRAIN: (352, 416, 512, 608)
+  MIN_SIZE_TRAIN: (416,)
+  MAX_SIZE_TRAIN: 608 # force max size train to 800?
+  MIN_SIZE_TEST: 416
+  MAX_SIZE_TEST: 608
+  # open all augmentations
+  JITTER_CROP:
+    ENABLED: False
+  RESIZE:
+    ENABLED: False
+    SHAPE: (416, 416)
+  DISTORTION:
+    ENABLED: True
+  COLOR_JITTER:
+    BRIGHTNESS: True
+    SATURATION: True
+  MOSAIC_AND_MIXUP:
+    # ENABLED: True
+    ENABLED: False
+    DEBUG_VIS: False
+    # DEBUG_VIS: False
+    # ENABLE_MIXUP: True
+    ENABLE_MIXUP: False
+    DISABLE_AT_ITER: 800000 # disable mosaic at iter, also will enable l1 loss then
+    MOSAIC_WIDTH_RANGE: [416, 416]
+    MOSAIC_HEIGHT_RANGE: [416, 416]
+  INPUT_SIZE: [416, 416]
+
+
+SOLVER:
+  # enable fp16 training
+  AMP:
+    ENABLED: True
+  # IMS_PER_BATCH: 80
+  # BASE_LR: 0.008
+  IMS_PER_BATCH: 160
+  BASE_LR: 0.01
+  STEPS: (90000, 180000)
+  WARMUP_FACTOR: 0.001
+  # WARMUP_ITERS: 1200
+  WARMUP_ITERS: 3000
+  MAX_ITER: 230000
+  LR_SCHEDULER_NAME: "WarmupMultiStepLR"
+  WEIGHT_DECAY: 0.0001
+  MOMENTUM: 0.9
+  BACKBONE_MULTIPLIER: 0.9
+  OPTIMIZER: "ADAMW"
+
+TEST:
+  EVAL_PERIOD: 8000
+  # EVAL_PERIOD: 0
+OUTPUT_DIR: "output/coco_yolo2go_shufflenetv2_dfl"
+VIS_PERIOD: 5000
+
+DATALOADER:
+  # proposals are part of the dataset_dicts, and take a lot of RAM
+  NUM_WORKERS: 3

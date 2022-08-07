@@ -1,0 +1,101 @@
+_BASE_: "../../Base-YOLOv7.yaml"
+MODEL:
+  PIXEL_MEAN: [0.485, 0.456, 0.406] # same value as PP-YOLOv2, RGB order
+  PIXEL_STD: [0.229, 0.224, 0.225]
+
+  WEIGHTS: ""
+  MASK_ON: False
+  META_ARCHITECTURE: "YOLO2GO"
+  BACKBONE:
+    NAME: "build_mobilenetv2_backbone"
+    SUBTYPE: "s"
+    OUT_FEATURES: ["res3", "res4", "res5"]
+    # WEIGHTS: "weights/efficientnet_v2_s-dd5fe13b.pth"
+
+  YOLO:
+    CLASSES: 80
+    IN_FEATURES: ["res3", "res4", "res5"]
+    CONF_THRESHOLD: 0.001
+    NMS_THRESHOLD: 0.65
+    IGNORE_THRESHOLD: 0.7
+    # decided by in_channels
+    # WIDTH_MUL: 0.50
+    # DEPTH_MUL: 0.33
+    LOSS_TYPE: "v7"
+    LOSS:
+      LAMBDA_IOU: 1.1
+    HEAD:
+      # TYPE: "ppyoloe"
+      TYPE: "yolox"
+    NECK:
+      TYPE: "ghostpan"
+      OUT_CHANNELS: 96
+      NUM_EXTRA_LEVEL: 0
+      ACTIVATION: "SiLU"
+    NORMALIZE_INPUT: true
+
+DATASETS:
+  TRAIN: ("coco_2017_train",)
+  # TEST: ("coco_2014_val_mini",)
+  TEST: ("coco_2017_val",)
+
+INPUT:
+  # FORMAT: "RGB" # using BGR default
+  # MIN_SIZE_TRAIN: (352, 416, 512, 608)
+  MIN_SIZE_TRAIN: (416,)
+  # MAX_SIZE_TRAIN: 608 # force max size train to 800?
+  MAX_SIZE_TRAIN: 800 # force max size train to 800?
+  # MIN_SIZE_TEST: 416
+  MIN_SIZE_TEST: 608
+  MAX_SIZE_TEST: 608
+  # open all augmentations
+  JITTER_CROP:
+    ENABLED: False
+  RESIZE:
+    ENABLED: False
+    SHAPE: (416, 416)
+  DISTORTION:
+    ENABLED: True
+  COLOR_JITTER:
+    BRIGHTNESS: True
+    SATURATION: True
+  MOSAIC_AND_MIXUP:
+    ENABLED: False
+    DEBUG_VIS: False
+    # DEBUG_VIS: False
+    # ENABLE_MIXUP: True
+    ENABLE_MIXUP: False
+    DISABLE_AT_ITER: 690000
+    MOSAIC_WIDTH_RANGE: [416, 608]
+    MOSAIC_HEIGHT_RANGE: [416, 608]
+  INPUT_SIZE: [416, 416]
+
+
+SOLVER:
+  # enable fp16 training
+  AMP:
+    ENABLED: true
+  IMS_PER_BATCH: 72
+  # BASE_LR: 0.008 # maybe 0.012?
+  BASE_LR: 0.006 # maybe 0.012?
+  STEPS: (60000, 100000, 140000) # step point need to carefully check
+  WARMUP_FACTOR: 0.001
+  # WARMUP_ITERS: 1200
+  WARMUP_ITERS: 3000
+  MAX_ITER: 900000
+  # LR_SCHEDULER_NAME: "WarmupCosineLR"
+  LR_SCHEDULER_NAME: "WarmupMultiStepLR"
+  WEIGHT_DECAY: 0.0001
+  MOMENTUM: 0.9
+  BACKBONE_MULTIPLIER: 0.8
+  OPTIMIZER: "ADAMW"
+
+TEST:
+  EVAL_PERIOD: 8000
+  # EVAL_PERIOD: 0
+OUTPUT_DIR: "output/coco_yolo2go_mbv2"
+VIS_PERIOD: 5000
+
+DATALOADER:
+  # proposals are part of the dataset_dicts, and take a lot of RAM
+  NUM_WORKERS: 3
